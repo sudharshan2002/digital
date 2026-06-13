@@ -1,53 +1,74 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { atlasNodes as fallbackAtlasNodes, cases as fallbackCases, journey } from './data/siteData.js';
+import { cases as fallbackCases, journey } from './data/siteData.js';
 import './styles.css';
 
 const navItems = [
   ['/', 'Home'],
-  ['/case-studies', 'Work'],
-  ['/atlas', 'Services'],
-  ['/lab', 'Method'],
-  ['/about', 'Studio'],
+  ['/work', 'Work'],
+  ['/services', 'Services'],
+  ['/method', 'Method'],
+  ['/studio', 'Studio'],
   ['/contact', 'Contact']
 ];
 
-const services = [
-  ['Product Strategy', 'Clarify the market, audience, value proposition, and product decisions that matter before design begins.'],
-  ['Brand Systems', 'Turn positioning into a precise identity, messaging system, and visual language that can scale.'],
-  ['UX and Interface Design', 'Design fast, credible, conversion-focused experiences across websites, web apps, and launch surfaces.'],
-  ['Build and Launch', 'Ship responsive, maintainable front-end systems with the detail and performance expected from premium brands.']
+const metrics = [
+  ['01', 'Positioning'],
+  ['02', 'Experience'],
+  ['03', 'Interface'],
+  ['04', 'Launch']
 ];
 
-const proofSignals = [
-  ['01', 'Strategy before aesthetics'],
-  ['02', 'Conversion paths by default'],
-  ['03', 'Senior-level execution'],
-  ['04', 'Launch-ready systems']
+const serviceTracks = [
+  {
+    title: 'Strategy',
+    label: 'Market clarity',
+    copy: 'Define the offer, audience, objections, proof, message hierarchy, and commercial path before design starts.',
+    deliverables: ['Positioning map', 'Page architecture', 'Conversion logic']
+  },
+  {
+    title: 'Identity',
+    label: 'Brand system',
+    copy: 'Build a visual and verbal system that feels premium, restrained, and consistent across every digital touchpoint.',
+    deliverables: ['Tone of voice', 'Semantic palette', 'Component rules']
+  },
+  {
+    title: 'Product UX',
+    label: 'Interaction design',
+    copy: 'Shape fast user journeys, responsive flows, polished interaction states, and interfaces that reduce friction.',
+    deliverables: ['UX flows', 'Interface system', 'Motion language']
+  },
+  {
+    title: 'Engineering',
+    label: 'Launch build',
+    copy: 'Ship accessible, maintainable, performance-minded front-end systems ready for real users and real devices.',
+    deliverables: ['React build', 'Responsive QA', 'Release support']
+  }
 ];
 
 const process = [
-  ['01', 'Diagnose', 'We identify the audience, commercial goal, objections, buying triggers, and proof gaps.'],
-  ['02', 'Position', 'We sharpen the offer, narrative, hierarchy, and trust signals before the interface is designed.'],
-  ['03', 'Design', 'We create a calm, premium product experience with clear flows, responsive layouts, and durable components.'],
-  ['04', 'Ship', 'We build, test, refine, and prepare the product for real users rather than stopping at a pretty mockup.']
+  ['Frame', 'Clarify the business goal, audience, conversion event, and trust gaps.'],
+  ['Simplify', 'Remove weak sections, generic copy, visual noise, and confusing pathways.'],
+  ['Shape', 'Design the system: layout, rhythm, motion, colour, components, and content.'],
+  ['Launch', 'Build, test, refine, and ship a product surface that feels composed on every screen.']
 ];
 
-const outcomes = [
-  'Clearer positioning for high-intent visitors',
-  'Sharper lead generation and contact flows',
-  'Premium visual systems with fewer distractions',
-  'Responsive builds that feel fast and stable',
-  'Reusable components and scalable content structure'
+const objections = [
+  ['Will clients trust us quickly?', 'Lead with specific outcomes, process clarity, proof signals, and a confident contact path.'],
+  ['Does the site feel premium?', 'Use precise spacing, restrained colour, strong typography, and purposeful interface motion.'],
+  ['Will it convert?', 'Make the next step visible, reduce cognitive load, and answer the buyer questions in order.'],
+  ['Will it scale?', 'Build with reusable content sections, semantic tokens, and predictable component patterns.']
 ];
 
 function usePath(){
   const [path, setPath] = useState(window.location.pathname);
+
   useEffect(() => {
     const onPop = () => setPath(window.location.pathname);
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
+
   return [path, setPath];
 }
 
@@ -57,72 +78,94 @@ function goTo(path, setPath){
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+function useLoading(){
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setLoading(false), 1100);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  return loading;
+}
+
 function App(){
   const [path, setPath] = usePath();
   const [casesData, setCasesData] = useState(fallbackCases);
-  const [atlasData, setAtlasData] = useState(fallbackAtlasNodes);
-  const slug = path.startsWith('/case-studies/') ? path.split('/').pop() : null;
+  const loading = useLoading();
+  const slug = path.startsWith('/work/') || path.startsWith('/case-studies/') ? path.split('/').pop() : null;
   const activeCase = slug ? casesData.find((item) => item.slug === slug) : null;
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/cases').then((res) => res.ok ? res.json() : fallbackCases),
-      fetch('/api/atlas').then((res) => res.ok ? res.json() : fallbackAtlasNodes)
-    ])
-      .then(([nextCases, nextAtlas]) => {
-        setCasesData(nextCases);
-        setAtlasData(nextAtlas);
-      })
-      .catch(() => {
-        setCasesData(fallbackCases);
-        setAtlasData(fallbackAtlasNodes);
-      });
+    fetch('/api/cases')
+      .then((res) => res.ok ? res.json() : fallbackCases)
+      .then(setCasesData)
+      .catch(() => setCasesData(fallbackCases));
   }, []);
 
   useEffect(() => {
     document.title = activeCase
-      ? `${activeCase.name} Strategy Study | Sudharshan Studio`
+      ? `${activeCase.name} Study | Sudharshan Studio`
       : 'Sudharshan Studio | Premium Digital Agency';
   }, [activeCase]);
 
   return (
     <>
+      <LoadingScreen hidden={!loading} />
       <Nav path={path} setPath={setPath} />
-      {activeCase ? <CasePage study={activeCase} studies={casesData} setPath={setPath} /> : <Router path={path} setPath={setPath} casesData={casesData} atlasData={atlasData} />}
+      <div className="page-shell" key={activeCase ? activeCase.slug : path}>
+        {activeCase ? <CasePage study={activeCase} studies={casesData} setPath={setPath} /> : <Router path={path} setPath={setPath} casesData={casesData} />}
+      </div>
+      <MobileAction setPath={setPath} />
       <Footer setPath={setPath} />
     </>
   );
 }
 
-function Router({ path, setPath, casesData, atlasData }){
-  if(path === '/lab') return <LabPage setPath={setPath} />;
-  if(path === '/case-studies') return <CaseStudiesPage setPath={setPath} casesData={casesData} />;
-  if(path === '/atlas') return <ServicesPage atlasData={atlasData} setPath={setPath} />;
-  if(path === '/about') return <AboutPage setPath={setPath} />;
+function LoadingScreen({ hidden }){
+  return (
+    <div className={`loader ${hidden ? 'is-hidden' : ''}`} aria-hidden={hidden}>
+      <div className="loader-mark">
+        <span>Sudharshan</span>
+        <strong>Studio</strong>
+      </div>
+      <div className="loader-track">
+        <i />
+      </div>
+      <p>Strategy / Design / Build</p>
+    </div>
+  );
+}
+
+function Router({ path, setPath, casesData }){
+  if(path === '/work' || path === '/case-studies') return <WorkPage setPath={setPath} casesData={casesData} />;
+  if(path === '/services' || path === '/atlas') return <ServicesPage setPath={setPath} />;
+  if(path === '/method' || path === '/lab') return <MethodPage setPath={setPath} />;
+  if(path === '/studio' || path === '/about') return <StudioPage setPath={setPath} />;
   if(path === '/contact') return <ContactPage />;
   return <HomePage setPath={setPath} casesData={casesData} />;
 }
 
 function Nav({ path, setPath }){
   return (
-    <nav className="nav" aria-label="Main navigation">
-      <button className="mark" onClick={() => goTo('/', setPath)} aria-label="Sudharshan Studio home">
-        <span>Sudharshan</span>
-        <strong>Studio</strong>
+    <header className="topbar">
+      <button className="brand" onClick={() => goTo('/', setPath)} aria-label="Sudharshan Studio home">
+        <span>SS</span>
+        <strong>Sudharshan Studio</strong>
       </button>
-      <div className="nav-links">
+      <nav className="nav-links" aria-label="Primary">
         {navItems.slice(1).map(([href, label]) => (
           <button
             key={href}
-            className={path === href || (href === '/case-studies' && path.startsWith('/case-studies')) ? 'active' : ''}
+            className={path === href || (href === '/work' && path.startsWith('/work')) ? 'active' : ''}
             onClick={() => goTo(href, setPath)}
           >
             {label}
           </button>
         ))}
-      </div>
-      <button className="nav-cta" onClick={() => goTo('/contact', setPath)}>Start a project</button>
-    </nav>
+      </nav>
+      <button className="nav-action" onClick={() => goTo('/contact', setPath)}>Start</button>
+    </header>
   );
 }
 
@@ -130,70 +173,65 @@ function HomePage({ setPath, casesData }){
   return (
     <main>
       <section className="hero">
-        <div className="hero-copy-block">
+        <div className="hero-copy reveal">
           <p className="eyebrow">Premium digital agency</p>
-          <h1>Designing digital products that make trust easier.</h1>
-          <p className="hero-copy">Sudharshan Studio partners with founders and ambitious teams to sharpen positioning, design conversion-focused interfaces, and ship digital experiences that feel calm, credible, and built to last.</p>
-          <div className="hero-actions">
-            <button className="primary" onClick={() => goTo('/contact', setPath)}>Start a project</button>
-            <button className="secondary" onClick={() => goTo('/case-studies', setPath)}>View strategic work</button>
+          <h1>Calm digital systems for brands that need to feel inevitable.</h1>
+          <p>We design and build high-trust websites, product interfaces, and launch systems where strategy, brand, UX, and engineering move as one smooth product team.</p>
+          <div className="action-row">
+            <button className="button primary" onClick={() => goTo('/contact', setPath)}>Start a project</button>
+            <button className="button secondary" onClick={() => goTo('/work', setPath)}>See the thinking</button>
           </div>
         </div>
-        <aside className="hero-panel" aria-label="Agency focus">
-          <span>Focus</span>
-          <strong>Strategy, brand, UX, and launch-ready front-end systems.</strong>
-          <div>
-            {['SaaS', 'AI products', 'service brands', 'creator platforms'].map((item) => <p key={item}>{item}</p>)}
-          </div>
-        </aside>
+        <StudioConsole />
       </section>
 
-      <section className="signal-strip" aria-label="Trust signals">
-        {proofSignals.map(([number, label]) => (
-          <div key={label}>
+      <section className="metric-strip reveal" aria-label="Core capabilities">
+        {metrics.map(([number, label]) => (
+          <article key={label}>
             <span>{number}</span>
             <strong>{label}</strong>
-          </div>
+          </article>
         ))}
       </section>
 
-      <section className="section split-section">
-        <SectionIntro
-          eyebrow="What we fix"
-          title="Digital experiences often fail before users understand the offer."
-          copy="Visitors scan fast. They look for relevance, proof, clarity, and the confidence that the team behind the product can deliver. The site must answer those questions without asking people to work."
-        />
-        <div className="outcome-list">
-          {outcomes.map((item) => <p key={item}>{item}</p>)}
+      <section className="section editorial">
+        <div className="section-heading reveal">
+          <p className="eyebrow">The standard</p>
+          <h2>Less noise. More conviction. A faster path to trust.</h2>
+        </div>
+        <div className="editorial-grid reveal">
+          {objections.map(([title, copy]) => (
+            <article key={title}>
+              <h3>{title}</h3>
+              <p>{copy}</p>
+            </article>
+          ))}
         </div>
       </section>
 
-      <section className="section">
-        <SectionIntro
-          eyebrow="Services"
-          title="A focused operating system for premium launches."
-          copy="The work is intentionally narrow: strategy, identity, interface design, and production. Fewer moving parts, stronger decisions, cleaner execution."
-        />
-        <ServiceGrid setPath={setPath} />
+      <section className="section services-preview">
+        <div className="section-heading reveal">
+          <p className="eyebrow">Services</p>
+          <h2>A compact operating system for serious launches.</h2>
+        </div>
+        <ServiceRail setPath={setPath} />
       </section>
 
-      <section className="section dark-band">
-        <SectionIntro
-          eyebrow="Method"
-          title="Built around the questions clients actually ask before they buy."
-          copy="Why this team? Why this offer? Why now? What happens next? Every section, component, and interaction should reduce doubt."
-          inverted
-        />
-        <ProcessGrid />
+      <section className="section motion-section">
+        <div className="motion-copy reveal">
+          <p className="eyebrow">Motion language</p>
+          <h2>Every transition should explain where you are, not show off.</h2>
+          <p>Movement is used for orientation, state, sequence, and feedback. Fast enough to feel modern. Soft enough to feel expensive.</p>
+        </div>
+        <MotionSpec />
       </section>
 
-      <section className="section">
-        <SectionIntro
-          eyebrow="Strategic studies"
-          title="Commercial thinking, not just visual taste."
-          copy="These studies unpack how leading digital products earn trust, build habit, and convert attention into durable business value."
-        />
-        <CaseGrid setPath={setPath} featured casesData={casesData} />
+      <section className="section work-preview">
+        <div className="section-heading reveal">
+          <p className="eyebrow">Work intelligence</p>
+          <h2>Strategic studies that sharpen the way the studio builds.</h2>
+        </div>
+        <CaseGrid setPath={setPath} casesData={casesData.slice(0, 3)} />
       </section>
 
       <CTA setPath={setPath} />
@@ -201,27 +239,64 @@ function HomePage({ setPath, casesData }){
   );
 }
 
-function ServiceGrid({ setPath }){
+function StudioConsole(){
   return (
-    <div className="service-grid">
-      {services.map(([title, copy], index) => (
-        <button className="service-card" key={title} onClick={() => index === 0 ? goTo('/lab', setPath) : goTo('/atlas', setPath)}>
+    <aside className="studio-console reveal" aria-label="Agency operating console">
+      <div className="console-top">
+        <span>Launch OS</span>
+        <strong>Live project model</strong>
+      </div>
+      <div className="console-screen">
+        <div className="signal-map" aria-hidden="true">
+          <span className="node node-a" />
+          <span className="node node-b" />
+          <span className="node node-c" />
+          <span className="node node-d" />
+          <i className="track track-a" />
+          <i className="track track-b" />
+          <i className="track track-c" />
+        </div>
+        <div className="console-panel">
+          <p>Conversion path</p>
+          <strong>Clear offer to proof to decision</strong>
+        </div>
+      </div>
+      <div className="console-list">
+        {['Semantic palette locked', 'Mobile flow reviewed', 'Motion curve tuned', 'Launch copy compressed'].map((item) => (
+          <p key={item}><span />{item}</p>
+        ))}
+      </div>
+    </aside>
+  );
+}
+
+function ServiceRail({ setPath }){
+  return (
+    <div className="service-rail reveal">
+      {serviceTracks.map((service, index) => (
+        <button className="service-tile" key={service.title} onClick={() => goTo('/services', setPath)}>
           <span>{String(index + 1).padStart(2, '0')}</span>
-          <h3>{title}</h3>
-          <p>{copy}</p>
+          <small>{service.label}</small>
+          <h3>{service.title}</h3>
+          <p>{service.copy}</p>
         </button>
       ))}
     </div>
   );
 }
 
-function ProcessGrid(){
+function MotionSpec(){
   return (
-    <div className="process-grid">
-      {process.map(([number, title, copy]) => (
-        <article key={title}>
-          <span>{number}</span>
-          <h3>{title}</h3>
+    <div className="motion-spec reveal" aria-label="Motion specification">
+      {[
+        ['Load', '900ms', 'Brand readiness'],
+        ['Route', '420ms', 'Spatial continuity'],
+        ['Hover', '180ms', 'Immediate feedback'],
+        ['Reveal', '620ms', 'Reading rhythm']
+      ].map(([label, time, copy]) => (
+        <article key={label}>
+          <span>{label}</span>
+          <strong>{time}</strong>
           <p>{copy}</p>
         </article>
       ))}
@@ -229,46 +304,14 @@ function ProcessGrid(){
   );
 }
 
-function LabPage({ setPath }){
-  return (
-    <main>
-      <PageHeader
-        eyebrow="Method"
-        title="A simple, senior process for high-stakes digital work."
-        copy="The method is designed to reduce ambiguity early, make decisions visible, and move quickly from strategy to shipped experience."
-        action={<button className="primary" onClick={() => goTo('/contact', setPath)}>Discuss a brief</button>}
-      />
-      <section className="section">
-        <ProcessGrid />
-      </section>
-      <section className="section split-section">
-        <SectionIntro
-          eyebrow="Decision framework"
-          title="Every page is judged against business value."
-          copy="The work is reviewed through five lenses so the final site does more than look expensive. It has to persuade, inform, perform, and scale."
-        />
-        <div className="method-stack">
-          {['Positioning clarity', 'Trust and proof', 'Conversion flow', 'Interface quality', 'Technical readiness'].map((item, index) => (
-            <button key={item} onClick={() => index === 2 && goTo('/contact', setPath)}>
-              <span>{String(index + 1).padStart(2, '0')}</span>
-              {item}
-            </button>
-          ))}
-        </div>
-      </section>
-      <CTA setPath={setPath} />
-    </main>
-  );
-}
-
-function CaseStudiesPage({ setPath, casesData }){
+function WorkPage({ setPath, casesData }){
   return (
     <main>
       <PageHeader
         eyebrow="Work"
-        title="Strategy studies for products with real commercial gravity."
-        copy="This library demonstrates the level of product, UX, and business analysis used before shaping a premium digital experience."
-        action={<button className="primary" onClick={() => goTo('/contact', setPath)}>Start a project</button>}
+        title="Product studies with commercial weight."
+        copy="The work library is not decoration. It shows how the studio thinks about trust, habit, pricing, retention, and interface decisions."
+        action={<button className="button primary" onClick={() => goTo('/contact', setPath)}>Discuss a project</button>}
       />
       <section className="section">
         <CaseGrid setPath={setPath} casesData={casesData} />
@@ -277,16 +320,15 @@ function CaseStudiesPage({ setPath, casesData }){
   );
 }
 
-function CaseGrid({ setPath, casesData, featured = false }){
-  const list = featured ? casesData.slice(0, 3) : casesData;
+function CaseGrid({ setPath, casesData }){
   return (
-    <div className="case-grid">
-      {list.map((study) => (
+    <div className="case-grid reveal">
+      {casesData.map((study, index) => (
         <button
-          className={`case-card ${study.gradient}`}
-          data-mark={study.name.slice(0, 2).toUpperCase()}
+          className="case-card"
           key={study.slug}
-          onClick={() => goTo(`/case-studies/${study.slug}`, setPath)}
+          style={{ '--accent': `var(--case-${(index % 6) + 1})` }}
+          onClick={() => goTo(`/work/${study.slug}`, setPath)}
         >
           <span>{study.category}</span>
           <h3>{study.name}</h3>
@@ -302,80 +344,59 @@ function CasePage({ study, studies, setPath }){
   const current = studies.findIndex((item) => item.slug === study.slug);
   const prev = studies[(current - 1 + studies.length) % studies.length];
   const next = studies[(current + 1) % studies.length];
+
   return (
     <main>
-      <header className={`case-hero ${study.gradient}`}>
-        <div className="case-hero-copy">
+      <header className="case-hero">
+        <div className="case-title reveal">
           <p className="eyebrow">{study.category}</p>
           <h1>{study.headline}</h1>
           <p>{study.summary}</p>
-          <div className="tag-row">{study.tags.map((tag) => <b key={tag}>{tag}</b>)}</div>
+        </div>
+        <div className="case-meta reveal">
+          {study.stats.map(([label, value]) => (
+            <article key={label}>
+              <span>{label}</span>
+              <strong>{value}</strong>
+            </article>
+          ))}
         </div>
       </header>
 
-      <section className="section case-dashboard">
-        {study.stats.map(([label, value]) => (
-          <article key={label}>
-            <span>{label}</span>
-            <strong>{value}</strong>
-          </article>
-        ))}
-      </section>
-
-      <section className="section case-story">
-        <aside className="case-sidebar">
-          <p className="eyebrow">Strategic snapshot</p>
+      <section className="section case-body">
+        <aside className="case-aside reveal">
+          <p className="eyebrow">Snapshot</p>
           <dl>
             <dt>Moat</dt><dd>{study.moat}</dd>
             <dt>Risk</dt><dd>{study.risk}</dd>
             <dt>Design reading</dt><dd>{study.visualSystem}</dd>
           </dl>
         </aside>
-        <article className="case-narrative">
-          <div className="case-opening">
-            <span>{study.name}</span>
-            <h2>The business behind the experience.</h2>
-            <p>{study.deck}</p>
-          </div>
-
-          <div className="chapter-list">
-            {study.chapters.map((chapter, index) => (
-              <section className="chapter-section" key={chapter.title}>
-                <span>{String(index + 1).padStart(2, '0')}</span>
-                <div>
-                  <h3>{chapter.title}</h3>
-                  <p>{chapter.body}</p>
-                </div>
-              </section>
-            ))}
-          </div>
-
-          <div className="two-column-study">
+        <article className="case-article reveal">
+          {study.chapters.map((chapter, index) => (
+            <section className="case-chapter" key={chapter.title}>
+              <span>{String(index + 1).padStart(2, '0')}</span>
+              <div>
+                <h2>{chapter.title}</h2>
+                <p>{chapter.body}</p>
+              </div>
+            </section>
+          ))}
+          <div className="study-columns">
             <StudyBlock title="Business model" items={study.businessModel} />
             <StudyBlock title="Growth engine" items={study.growthEngine} />
           </div>
-
-          <section className="principles-panel">
-            <p className="eyebrow">What this teaches</p>
-            <h2>Creative-enterprise principles.</h2>
-            <div>
-              {study.principles.map((principle, index) => (
-                <p key={principle}><span>{String(index + 1).padStart(2, '0')}</span>{principle}</p>
-              ))}
-            </div>
-          </section>
-
-          <section className="takeaway-panel">
-            <h2>Takeaway</h2>
-            <p>{study.takeaway}</p>
+          <section className="takeaway">
+            <p className="eyebrow">Takeaway</p>
+            <h2>{study.takeaway}</h2>
           </section>
         </article>
       </section>
 
-      <section className="section case-nav-panel">
-        <button onClick={() => goTo(`/case-studies/${prev.slug}`, setPath)}>Previous / {prev.name}</button>
-        <button onClick={() => goTo('/case-studies', setPath)}>All studies</button>
-        <button onClick={() => goTo(`/case-studies/${next.slug}`, setPath)}>Next / {next.name}</button>
+      <section className="section case-nav">
+        <button className="button secondary" onClick={() => goTo(`/work/${prev.slug}`, setPath)}>Previous / {prev.name}</button>
+        <button className="button secondary" onClick={() => goTo('/work', setPath)}>All work</button>
+        <button className="button secondary" onClick={() => goTo(`/work/${next.slug}`, setPath)}>Next / {next.name}</button>
       </section>
     </main>
   );
@@ -384,7 +405,7 @@ function CasePage({ study, studies, setPath }){
 function StudyBlock({ title, items }){
   return (
     <div className="study-block">
-      <h2>{title}</h2>
+      <h3>{title}</h3>
       {items.map((item, index) => (
         <p key={item}><span>{String(index + 1).padStart(2, '0')}</span>{item}</p>
       ))}
@@ -392,75 +413,74 @@ function StudyBlock({ title, items }){
   );
 }
 
-function ServicesPage({ atlasData, setPath }){
-  const [active, setActive] = useState(atlasData[1] || atlasData[0]);
-  useEffect(() => {
-    setActive((current) => atlasData.find((node) => node.id === current?.id) || atlasData[1] || atlasData[0]);
-  }, [atlasData]);
-
-  const servicePairs = useMemo(() => [
-    ['Strategy', 'Audience, offer, proof, and conversion logic.'],
-    ['Identity', 'Brand voice, visual system, and interface principles.'],
-    ['Experience', 'Responsive UX, page hierarchy, and component design.'],
-    ['Launch', 'Front-end build, performance, QA, and handoff.']
-  ], []);
-
+function ServicesPage({ setPath }){
   return (
     <main>
       <PageHeader
         eyebrow="Services"
-        title="A compact team for strategy-led digital launches."
-        copy="The studio is built for teams who need clarity and craft in one place: fewer handoffs, sharper decisions, and a digital product that can go live with confidence."
-        action={<button className="primary" onClick={() => goTo('/contact', setPath)}>Book a consultation</button>}
+        title="Strategy, brand, UX, and build without the agency bloat."
+        copy="A focused studio model for teams that need senior thinking, refined execution, and a digital product that feels ready on day one."
+        action={<button className="button primary" onClick={() => goTo('/contact', setPath)}>Start a scope</button>}
       />
       <section className="section service-detail">
-        <div className="service-map">
-          {servicePairs.map(([label, copy], index) => (
-            <article key={label}>
-              <span>{String(index + 1).padStart(2, '0')}</span>
-              <h3>{label}</h3>
-              <p>{copy}</p>
-            </article>
-          ))}
-        </div>
-        <aside className="atlas-panel">
-          <span>Strategic coordinate</span>
-          <h2>{active.label}</h2>
-          <p>{active.insight}</p>
-          <div className="axis-list">
-            {atlasData.map((node) => (
-              <button className={active.id === node.id ? 'hot' : ''} key={node.id} onClick={() => setActive(node)}>
-                <span>{node.label}</span>
-                <i />
-                <span>{node.short}</span>
-              </button>
-            ))}
-          </div>
-        </aside>
+        {serviceTracks.map((service, index) => (
+          <article className="service-detail-card reveal" key={service.title}>
+            <span>{String(index + 1).padStart(2, '0')}</span>
+            <small>{service.label}</small>
+            <h2>{service.title}</h2>
+            <p>{service.copy}</p>
+            <ul>
+              {service.deliverables.map((item) => <li key={item}>{item}</li>)}
+            </ul>
+          </article>
+        ))}
       </section>
       <CTA setPath={setPath} />
     </main>
   );
 }
 
-function AboutPage({ setPath }){
+function MethodPage({ setPath }){
+  return (
+    <main>
+      <PageHeader
+        eyebrow="Method"
+        title="A launch process designed to remove hesitation."
+        copy="The method is strict because premium work needs fewer guesses: clear goals, deliberate hierarchy, tight content, exact UI systems, and disciplined release checks."
+        action={<button className="button primary" onClick={() => goTo('/contact', setPath)}>Bring a brief</button>}
+      />
+      <section className="section process-board">
+        {process.map(([title, copy], index) => (
+          <article className="process-card reveal" key={title}>
+            <span>{String(index + 1).padStart(2, '0')}</span>
+            <h2>{title}</h2>
+            <p>{copy}</p>
+          </article>
+        ))}
+      </section>
+      <section className="section QA-panel reveal">
+        <p className="eyebrow">Quality gate</p>
+        <h2>Every screen must pass the same test: does it make the next decision easier?</h2>
+      </section>
+    </main>
+  );
+}
+
+function StudioPage({ setPath }){
   return (
     <main>
       <PageHeader
         eyebrow="Studio"
-        title="Small by design. Senior by default."
-        copy="Sudharshan Studio combines product strategy, interface craft, and front-end engineering for clients who need a digital presence that earns trust quickly."
-        action={<button className="primary" onClick={() => goTo('/contact', setPath)}>Talk to the studio</button>}
+        title="Small, sharp, and built for premium digital work."
+        copy="Sudharshan Studio exists for clients who want the clarity of strategy, the taste of a product design team, and the execution discipline of front-end engineering."
+        action={<button className="button primary" onClick={() => goTo('/contact', setPath)}>Talk to the studio</button>}
       />
-      <section className="section about-layout">
-        <div className="portrait-card">
+      <section className="section studio-story">
+        <div className="studio-portrait reveal">
           <img src="/profile-photo.jpg" alt="Sudharshan Ravichandran" onError={(event) => { event.currentTarget.style.display = 'none'; }} />
-          <div className="portrait-fallback">
-            <span>SR</span>
-            <p>Product strategy, UX, brand systems, and front-end execution.</p>
-          </div>
+          <span>SS</span>
         </div>
-        <div className="journey">
+        <div className="journey-list reveal">
           {journey.map(([phase, title, copy]) => (
             <article key={phase}>
               <span>{phase}</span>
@@ -469,9 +489,6 @@ function AboutPage({ setPath }){
             </article>
           ))}
         </div>
-      </section>
-      <section className="section manifesto">
-        <p>The best digital agencies do not add noise. They remove hesitation. The work here is built around that standard: clear positioning, elegant systems, fast interfaces, and enough restraint for the offer to feel confident.</p>
       </section>
     </main>
   );
@@ -482,26 +499,26 @@ function ContactPage(){
     <main>
       <PageHeader
         eyebrow="Contact"
-        title="Bring a serious brief. Leave with a clearer path."
-        copy="For new websites, product launches, UX redesigns, premium brand systems, and front-end builds that need strategy and execution in the same room."
+        title="Send the messy brief. We will make the path clear."
+        copy="For premium websites, product launches, brand systems, UX redesigns, and front-end builds that need strategy and taste in the same room."
       />
-      <section className="section contact-layout">
-        <div className="contact-card">
+      <section className="section contact-system">
+        <article className="contact-primary reveal">
           <span>Project enquiries</span>
           <h2>hello@sudharshan.dev</h2>
-          <p>Send the current site or product, what needs to change, the timeline, and what success should look like.</p>
-          <a className="primary link-button" href="mailto:hello@sudharshan.dev">Email the studio</a>
-        </div>
-        <div className="contact-list">
+          <p>Share the current site or product, the problem, the timeline, and what success should look like.</p>
+          <a className="button inverse" href="mailto:hello@sudharshan.dev">Email the studio</a>
+        </article>
+        <div className="contact-notes reveal">
           {[
-            ['Best fit', 'Launches, redesigns, premium agency sites, product interfaces'],
-            ['Typical scope', 'Strategy, UX, UI, brand direction, front-end build'],
-            ['Working style', 'Direct, focused, senior-led, commercially aware'],
-            ['Response', 'Expect a concise next-step reply, not a generic sales funnel']
-          ].map(([label, value]) => (
+            ['Best fit', 'High-trust websites, product UI, agency-grade digital systems'],
+            ['Pace', 'Fast discovery, decisive direction, polished execution'],
+            ['Output', 'Strategy, design system, responsive build, launch support'],
+            ['Tone', 'Direct, calm, senior, commercially aware']
+          ].map(([label, copy]) => (
             <article key={label}>
               <span>{label}</span>
-              <strong>{value}</strong>
+              <p>{copy}</p>
             </article>
           ))}
         </div>
@@ -513,48 +530,69 @@ function ContactPage(){
 function PageHeader({ eyebrow, title, copy, action }){
   return (
     <header className="page-header">
-      <div>
+      <div className="reveal">
         <p className="eyebrow">{eyebrow}</p>
         <h1>{title}</h1>
       </div>
-      <div>
+      <div className="page-summary reveal">
         <p>{copy}</p>
-        {action && <div className="page-action">{action}</div>}
+        {action && <div className="action-row">{action}</div>}
       </div>
     </header>
   );
 }
 
-function SectionIntro({ eyebrow, title, copy, inverted = false }){
+function CTA({ setPath }){
   return (
-    <div className={`section-intro ${inverted ? 'inverted' : ''}`}>
-      <p className="eyebrow">{eyebrow}</p>
-      <h2>{title}</h2>
-      <p>{copy}</p>
-    </div>
+    <section className="section CTA reveal">
+      <p className="eyebrow">Next step</p>
+      <h2>Build a digital presence that feels expensive because every decision is working.</h2>
+      <button className="button primary" onClick={() => goTo('/contact', setPath)}>Start a project</button>
+    </section>
   );
 }
 
-function CTA({ setPath }){
+function MobileAction({ setPath }){
   return (
-    <section className="section cta">
-      <p className="eyebrow">Next step</p>
-      <h2>Make the digital experience feel as good as the ambition behind it.</h2>
-      <button className="primary" onClick={() => goTo('/contact', setPath)}>Start a project</button>
-    </section>
+    <div className="mobile-action">
+      <button onClick={() => goTo('/work', setPath)}>Work</button>
+      <button onClick={() => goTo('/contact', setPath)}>Start</button>
+    </div>
   );
 }
 
 function Footer({ setPath }){
   return (
     <footer>
-      <span>2026 Sudharshan Studio</span>
+      <span>Sudharshan Studio</span>
       <div>
-        <button onClick={() => goTo('/case-studies', setPath)}>Work</button>
+        <button onClick={() => goTo('/services', setPath)}>Services</button>
         <button onClick={() => goTo('/contact', setPath)}>Contact</button>
       </div>
     </footer>
   );
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+function initScrollReveal(){
+  const items = document.querySelectorAll('.reveal');
+  if(!items.length) return undefined;
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if(entry.isIntersecting) {
+        entry.target.classList.add('is-visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.16, rootMargin: '0px 0px -8% 0px' });
+
+  items.forEach((item) => observer.observe(item));
+  return () => observer.disconnect();
+}
+
+function Root(){
+  useEffect(() => initScrollReveal());
+  return <App />;
+}
+
+createRoot(document.getElementById('root')).render(<Root />);
